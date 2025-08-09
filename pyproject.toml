@@ -1,0 +1,62 @@
+[tool.poetry]
+name = "machine_learning_engineering"
+version = "0.1"
+description = "MLE-STAR: A novel machine learning engineering (MLE) agent to automate the implementation of ML models."
+authors = ["Jiefeng Chen <jiefengc@google.com>", "Raj Sinha <sinharaj@google.com", "Jaehyun Nam <jaehyunnam@google.com>", "Jinsung Yoon <jinsungyoon@google.com>"]
+license = "Apache License 2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+google-adk = "^1.5.0"
+google-genai = "^1.9.0"
+pydantic = "^2.10.6"
+python-dotenv = "^1.0.1"
+google-cloud-aiplatform = { version = "^1.93", extras = [
+    "adk",
+    "agent-engines",
+] }
+numpy = "^2.2.3"
+pandas = "^2.3.1"
+scikit-learn = "^1.7.1"
+# The CPU version of PyTorch is installed here. Change this is you need GPUs, or
+# want to use PyTorch on a different hardware architecture or CPU.
+# (https://download.pytorch.org/whl)
+torch = [
+  {url = "https://download.pytorch.org/whl/cpu-cxx11-abi/torch-2.7.1%2Bcpu.cxx11.abi-cp312-cp312-linux_x86_64.whl", markers = "sys_platform == 'linux'"},
+]
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+google-adk = { extras = ["eval"], version = "^1.5.0" }
+google-cloud-aiplatform = { version = "^1.93", extras = [
+    "adk",
+    "agent-engines",
+    "evaluation",
+] }
+pytest = "^8.3.5"
+black = "^25.1.0"
+pytest-asyncio = "^0.26.0"
+numpy = "^2.2.3"
+pandas = "^2.3.1"
+scikit-learn = "^1.7.1"
+# The CPU version of PyTorch is installed here. Change this is you need GPUs, or
+# want to use PyTorch on a different hardware architecture or CPU.
+# (https://download.pytorch.org/whl)
+torch = [
+  {url = "https://download.pytorch.org/whl/cpu-cxx11-abi/torch-2.7.1%2Bcpu.cxx11.abi-cp312-cp312-linux_x86_64.whl", markers = "sys_platform == 'linux'"},
+]
+
+[tool.poetry.group.deployment]
+optional = true
+
+[tool.poetry.group.deployment.dependencies]
+absl-py = "^2.2.1"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

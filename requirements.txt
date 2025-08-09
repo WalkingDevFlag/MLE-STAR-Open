@@ -1,0 +1,25 @@
+# Requirements derived from pyproject.toml (Poetry) and code imports
+# Target: Python 3.12
+# Note: PyTorch wheels are platform-specific. This pins a stable CPU build range; adjust if you need GPU/optimized builds.
+
+# Core agent/runtime
+google-adk[eval]
+google-genai
+pydantic
+python-dotenv
+# Vertex AI SDK with ADK + Agent Engines extras
+google-cloud-aiplatform[adk,agent-engines,evaluation]
+
+# ML stack
+numpy
+pandas
+scikit-learn
+# PyTorch (platform-specific wheels). Leave unpinned for cross-platform install; pin if your environment requires it.
+torch
+
+# Deployment and CLIs
+absl-py
+
+# Test dependencies
+pytest
+pytest-asyncio
