@@ -3,16 +3,23 @@
 import dataclasses
 import os
 
+# Resolve absolute paths relative to the repository root so running from any CWD works
+_SHARED_LIB_DIR = os.path.dirname(os.path.abspath(__file__))
+_PKG_ROOT = os.path.dirname(_SHARED_LIB_DIR)  # .../machine_learning_engineering
+_REPO_ROOT = os.path.dirname(_PKG_ROOT)       # repo root
+
 
 @dataclasses.dataclass
 class DefaultConfig:
     """Default configuration."""
-    data_dir: str = "./machine_learning_engineering/tasks/"  # the directory path where the machine learning tasks and their data are stored.
+    # The directory path where the machine learning tasks and their data are stored.
+    data_dir: str = os.path.join(_PKG_ROOT, "tasks")
     task_name: str = "california-housing-prices"  # The name of the specific task to be loaded and processed.
     task_type: str = "Tabular Regression"  # The type of machine learning problem.
     lower: bool = True  # True if a lower value of the metric is better.
-    workspace_dir: str = "./machine_learning_engineering/workspace/"  # Directory used for saving intermediate outputs, results, logs.
-    agent_model: str = os.environ.get("ROOT_AGENT_MODEL", "gemini-2.0-flash-001")  # Name the LLM model to be used by the agent.
+    # Directory used for saving intermediate outputs, results, logs.
+    workspace_dir: str = os.path.join(_PKG_ROOT, "workspace")
+    agent_model: str = os.environ.get("ROOT_AGENT_MODEL", "meta-llama/llama-3.1-8b-instruct:free")  # Name/ID of the LLM model (OpenAI-compatible).
     task_description: str = ""  # The detailed description of the task.
     task_summary: str = ""  # The concise summary of the task.
     start_time: float = 0.0  # Timestamp indicating the start time of the task. Typically represented in seconds since the epoch.

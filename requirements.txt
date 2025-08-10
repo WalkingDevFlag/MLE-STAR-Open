@@ -2,13 +2,12 @@
 # Target: Python 3.12
 # Note: PyTorch wheels are platform-specific. This pins a stable CPU build range; adjust if you need GPU/optimized builds.
 
-# Core agent/runtime
-google-adk[eval]
-google-genai
-pydantic
+# Core client/runtime (OpenAI-compatible, no Google deps)
+openai
+httpx
 python-dotenv
-# Vertex AI SDK with ADK + Agent Engines extras
-google-cloud-aiplatform[adk,agent-engines,evaluation]
+pydantic
+duckduckgo-search
 
 # ML stack
 numpy
@@ -17,7 +16,7 @@ scikit-learn
 # PyTorch (platform-specific wheels). Leave unpinned for cross-platform install; pin if your environment requires it.
 torch
 
-# Deployment and CLIs
+# Optional CLIs
 absl-py
 
 # Test dependencies

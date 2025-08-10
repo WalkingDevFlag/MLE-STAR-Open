@@ -235,10 +235,9 @@ def prepare_task(
     common_util.set_random_seed(callback_context.state["seed"])
     task_name = callback_context.state.get("task_name", "")
     data_dir = callback_context.state.get("data_dir", "")
-    task_description = open(
-        os.path.join(data_dir, task_name, "task_description.txt"),
-        "r",
-    ).read()
+    task_desc_path = os.path.join(data_dir, task_name, "task_description.txt")
+    with open(task_desc_path, "r", encoding="utf-8") as f:
+        task_description = f.read()
     callback_context.state["task_description"] = task_description
     return None
 
