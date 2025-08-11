@@ -27,24 +27,60 @@ def save_state(
     return None
 
 
-mle_pipeline_agent = agents.SequentialAgent(
-    name="mle_pipeline_agent",
-    sub_agents=[
-        initialization_agent_module.initialization_agent,
-        refinement_agent_module.refinement_agent,
-        ensemble_agent_module.ensemble_agent,
-        submission_agent_module.submission_agent,
-    ],
-    description="Executes a sequence of sub-agents for solving the MLE task.",
-    after_agent_callback=save_state,
-)
+def get_mle_pipeline_agent():
+    """Creates and returns the MLE pipeline agent to avoid circular imports."""
+    # Import agent creation functions and call them to get the agents
+    initialization_agent = initialization_agent_module.get_initialization_agents()["initialization_agent"]
+    refinement_agent = refinement_agent_module.get_refinement_agent()
+    ensemble_agent = ensemble_agent_module.get_ensemble_agent()
+    submission_agent = submission_agent_module.get_submission_agent()
+    
+    mle_pipeline_agent = agents.SequentialAgent(
+        name="mle_pipeline_agent",
+        sub_agents=[
+            initialization_agent,
+            refinement_agent,
+            ensemble_agent,
+            submission_agent,
+        ],
+        description="Executes a sequence of sub-agents for solving the MLE task.",
+        after_agent_callback=save_state,
+    )
+    return mle_pipeline_agent
+
+
+def get_root_agent():
+    """Creates and returns the root agent to avoid circular imports."""
+    mle_pipeline_agent = get_mle_pipeline_agent()
+    
+    # For ADK tools compatibility, the root agent must be named `root_agent`
+    root_agent = agents.Agent(
+        model=os.getenv("ROOT_AGENT_MODEL"),
+        name="mle_frontdoor_agent",
+        instruction=prompt.FRONTDOOR_INSTRUCTION,
+        global_instruction=prompt.SYSTEM_INSTRUCTION,
+        sub_agents=[mle_pipeline_agent],
+        generate_content_config=types.GenerateContentConfig(temperature=0.01),
+    )
+    return root_agent
+
 
 # For ADK tools compatibility, the root agent must be named `root_agent`
-root_agent = agents.Agent(
-    model=os.getenv("ROOT_AGENT_MODEL"),
-    name="mle_frontdoor_agent",
-    instruction=prompt.FRONTDOOR_INSTRUCTION,
-    global_instruction=prompt.SYSTEM_INSTRUCTION,
-    sub_agents=[mle_pipeline_agent],
-    generate_content_config=types.GenerateContentConfig(temperature=0.01),
-)
+# Use lazy initialization to avoid circular imports
+_root_agent = None
+
+def _get_root_agent_lazy():
+    global _root_agent
+    if _root_agent is None:
+        _root_agent = get_root_agent()
+    return _root_agent
+
+# Create a property-like access to root_agent that creates it on first access
+class _RootAgentProxy:
+    def __getattr__(self, name):
+        return getattr(_get_root_agent_lazy(), name)
+    
+    def run(self, *args, **kwargs):
+        return _get_root_agent_lazy().run(*args, **kwargs)
+
+root_agent = _RootAgentProxy()

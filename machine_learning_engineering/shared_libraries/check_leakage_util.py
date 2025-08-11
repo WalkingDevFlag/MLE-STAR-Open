@@ -4,7 +4,6 @@ from typing import Optional
 import json
 import functools
 
-from google.adk import agents
 from google.adk.agents import callback_context as callback_context_module
 from google.adk.models import llm_response as llm_response_module
 from google.adk.models import llm_request as llm_request_module
@@ -182,8 +181,10 @@ def check_data_leakage(
 def get_data_leakage_checker_agent(
     prefix: str,
     suffix: str,
-) -> agents.SequentialAgent:
+):
+    from google.adk import agents
     """Gets the data leakage checker agent."""
+    from google.adk import agents
     check_leakage_agent = agents.Agent(
         model=config.CONFIG.agent_model,
         name=code_util.get_name_with_prefix_and_suffix(

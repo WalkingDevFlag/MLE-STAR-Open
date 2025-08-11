@@ -204,8 +204,9 @@ def get_code_from_response(
 def get_debug_inner_loop_agent(
     prefix: str,
     suffix: str,
-) -> agents.LoopAgent:
+) -> "agents.LoopAgent":
     """Gets the debug_inner_loop_agent."""
+    from google.adk import agents
     bug_summary_agent = agents.Agent(
         model=config.CONFIG.agent_model,
         name=code_util.get_name_with_prefix_and_suffix(
@@ -278,10 +279,11 @@ def get_run_and_debug_agent(
     prefix: str,
     suffix: str,
     agent_description: str,
-    instruction_func: agents.llm_agent.InstructionProvider,
-    before_model_callback: Optional[agents.llm_agent.BeforeModelCallback],
-) -> agents.LoopAgent:
+    instruction_func: "agents.llm_agent.InstructionProvider",
+    before_model_callback: Optional["agents.llm_agent.BeforeModelCallback"],
+) -> "agents.LoopAgent":
     """Gets the run and debug agent."""
+    from google.adk import agents
     if prefix.startswith("ensemble_plan_implement"):
         use_data_leakage_checker = False
     else:

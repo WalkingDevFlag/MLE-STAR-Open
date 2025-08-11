@@ -186,67 +186,70 @@ def create_workspace(
     return None
 
 
-init_ensemble_plan_agent = agents.Agent(
-    model=config.CONFIG.agent_model,
-    name="init_ensemble_plan_agent",
-    description="Generate an initial plan to ensemble solutions.",
-    instruction=get_init_ensemble_plan_agent_instruction,
-    before_agent_callback=init_ensemble_loop_states,
-    after_model_callback=get_init_ensemble_plan,
-    generate_content_config=types.GenerateContentConfig(
-        temperature=1.0,
-    ),
-    include_contents="none",
-)
-init_ensemble_plan_implement_agent = debug_util.get_run_and_debug_agent(
-    prefix="ensemble_plan_implement_initial",
-    suffix="",
-    agent_description="Implement the initial plan to ensemble solutions.",
-    instruction_func=get_ensemble_plan_implement_agent_instruction,
-    before_model_callback=check_ensemble_plan_implement_finish,
-)
-ensemble_plan_refine_agent = agents.Agent(
-    model=config.CONFIG.agent_model,
-    name="ensemble_plan_refine_agent",
-    description="Refine the ensemble plan.",
-    instruction=get_ensemble_plan_refinement_instruction,
-    after_model_callback=get_refined_ensemble_plan,
-    generate_content_config=types.GenerateContentConfig(
-        temperature=1.0,
-    ),
-    include_contents="none",
-)
-ensemble_plan_implement_agent = debug_util.get_run_and_debug_agent(
-    prefix="ensemble_plan_implement",
-    suffix="",
-    agent_description="Implement the plan to ensemble solutions.",
-    instruction_func=get_ensemble_plan_implement_agent_instruction,
-    before_model_callback=check_ensemble_plan_implement_finish,
-)
-ensemble_plan_refine_and_implement_agent = agents.SequentialAgent(
-    name="ensemble_plan_refine_and_implement_agent",
-    description="Refine the ensemble plan and then implement it.",
-    sub_agents=[
-        ensemble_plan_refine_agent,
-        ensemble_plan_implement_agent,
-    ],
-    after_agent_callback=update_ensemble_loop_states,
-)
-ensemble_plan_refine_and_implement_loop_agent = agents.LoopAgent(
-    name="ensemble_plan_refine_and_implement_loop_agent",
-    description="Iteratively refine the ensemble plan and implement it.",
-    sub_agents=[ensemble_plan_refine_and_implement_agent],
-    before_agent_callback=update_ensemble_loop_states,
-    max_iterations=config.CONFIG.ensemble_loop_round,
-)
-ensemble_agent = agents.SequentialAgent(
-    name="ensemble_agent",
-    description="Ensemble multiple solutions.",
-    sub_agents=[
-        init_ensemble_plan_agent,
-        init_ensemble_plan_implement_agent,
-        ensemble_plan_refine_and_implement_loop_agent,
-    ],
-    before_agent_callback=create_workspace,
-    after_agent_callback=None,
-)
+def get_ensemble_agent():
+    """Creates and returns the ensemble agent to avoid circular imports."""
+    init_ensemble_plan_agent = agents.Agent(
+        model=config.CONFIG.agent_model,
+        name="init_ensemble_plan_agent",
+        description="Generate an initial plan to ensemble solutions.",
+        instruction=get_init_ensemble_plan_agent_instruction,
+        before_agent_callback=init_ensemble_loop_states,
+        after_model_callback=get_init_ensemble_plan,
+        generate_content_config=types.GenerateContentConfig(
+            temperature=1.0,
+        ),
+        include_contents="none",
+    )
+    init_ensemble_plan_implement_agent = debug_util.get_run_and_debug_agent(
+        prefix="ensemble_plan_implement_initial",
+        suffix="",
+        agent_description="Implement the initial plan to ensemble solutions.",
+        instruction_func=get_ensemble_plan_implement_agent_instruction,
+        before_model_callback=check_ensemble_plan_implement_finish,
+    )
+    ensemble_plan_refine_agent = agents.Agent(
+        model=config.CONFIG.agent_model,
+        name="ensemble_plan_refine_agent",
+        description="Refine the ensemble plan.",
+        instruction=get_ensemble_plan_refinement_instruction,
+        after_model_callback=get_refined_ensemble_plan,
+        generate_content_config=types.GenerateContentConfig(
+            temperature=1.0,
+        ),
+        include_contents="none",
+    )
+    ensemble_plan_implement_agent = debug_util.get_run_and_debug_agent(
+        prefix="ensemble_plan_implement",
+        suffix="",
+        agent_description="Implement the plan to ensemble solutions.",
+        instruction_func=get_ensemble_plan_implement_agent_instruction,
+        before_model_callback=check_ensemble_plan_implement_finish,
+    )
+    ensemble_plan_refine_and_implement_agent = agents.SequentialAgent(
+        name="ensemble_plan_refine_and_implement_agent",
+        description="Refine the ensemble plan and then implement it.",
+        sub_agents=[
+            ensemble_plan_refine_agent,
+            ensemble_plan_implement_agent,
+        ],
+        after_agent_callback=update_ensemble_loop_states,
+    )
+    ensemble_plan_refine_and_implement_loop_agent = agents.LoopAgent(
+        name="ensemble_plan_refine_and_implement_loop_agent",
+        description="Iteratively refine the ensemble plan and implement it.",
+        sub_agents=[ensemble_plan_refine_and_implement_agent],
+        before_agent_callback=update_ensemble_loop_states,
+        max_iterations=config.CONFIG.ensemble_loop_round,
+    )
+    ensemble_agent = agents.SequentialAgent(
+        name="ensemble_agent",
+        description="Ensemble multiple solutions.",
+        sub_agents=[
+            init_ensemble_plan_agent,
+            init_ensemble_plan_implement_agent,
+            ensemble_plan_refine_and_implement_loop_agent,
+        ],
+        before_agent_callback=create_workspace,
+        after_agent_callback=None,
+    )
+    return ensemble_agent

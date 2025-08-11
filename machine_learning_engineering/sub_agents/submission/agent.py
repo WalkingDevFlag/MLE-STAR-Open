@@ -68,10 +68,13 @@ def get_submission_and_debug_agent_instruction(
     )
 
 
-submission_agent = debug_util.get_run_and_debug_agent(
-    prefix="submission",
-    suffix="",
-    agent_description="Add codes for creating a submission file.",
-    instruction_func=get_submission_and_debug_agent_instruction,
-    before_model_callback=check_submission_finish,
-)
+def get_submission_agent():
+    """Creates and returns the submission agent to avoid circular imports."""
+    submission_agent = debug_util.get_run_and_debug_agent(
+        prefix="submission",
+        suffix="",
+        agent_description="Add codes for creating a submission file.",
+        instruction_func=get_submission_and_debug_agent_instruction,
+        before_model_callback=check_submission_finish,
+    )
+    return submission_agent

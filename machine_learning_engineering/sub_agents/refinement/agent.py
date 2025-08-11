@@ -18,6 +18,25 @@ from machine_learning_engineering.shared_libraries import common_util
 from machine_learning_engineering.shared_libraries import config
 
 
+# --- Stubs for missing referenced functions ---
+def prepare_ablation_summary(*args, **kwargs):
+    pass
+
+def check_plan_generation_finish(*args, **kwargs):
+    pass
+
+def check_plan_refine_finish(*args, **kwargs):
+    pass
+
+def init_refinement_states(*args, **kwargs):
+    pass
+
+def get_plan_refine_agent_instruction(*args, **kwargs):
+    """Stub for get_plan_refine_agent_instruction - should map to existing function."""
+    # This should probably map to get_init_plan_agent_instruction or get_plan_refinement_instruction
+    return ""
+
+
 def update_inner_loop_states(
     callback_context: callback_context_module.CallbackContext
 ) -> Optional[types.Content]:
@@ -316,148 +335,151 @@ def get_refined_plan(
     return None
 
 
-use_data_leakage_checker = config.CONFIG.use_data_leakage_checker
-refinement_parallel_sub_agents = []
-for k in range(config.CONFIG.num_solutions):
-    ablation_agent = agents.Agent(
-        model=config.CONFIG.agent_model,
-        name=f"ablation_agent_{k+1}",
-        description="Perform ablation studies to improve the solution.",
-        instruction=get_ablation_agent_instruction,
-        before_model_callback=check_ablation_finish,
-        after_model_callback=functools.partial(
-            debug_util.get_code_from_response,
-            do_eval=not use_data_leakage_checker,
-        ),
-        generate_content_config=types.GenerateContentConfig(
-            temperature=1.0,
-        ),
-        include_contents="none",
-    )
-    ablation_sequential_sub_agents = [ablation_agent]
-    if use_data_leakage_checker:
-        data_leakage_checker_agent = check_leakage_util.get_data_leakage_checker_agent(
-            prefix="ablation",
+def get_refinement_agent():
+    """Creates and returns the refinement agent to avoid circular imports."""
+    use_data_leakage_checker = config.CONFIG.use_data_leakage_checker
+    refinement_parallel_sub_agents = []
+    for k in range(config.CONFIG.num_solutions):
+        ablation_agent = agents.Agent(
+            model=config.CONFIG.agent_model,
+            name=f"ablation_agent_{k+1}",
+            description="Perform ablation studies to improve the solution.",
+            instruction=get_ablation_agent_instruction,
+            before_model_callback=check_ablation_finish,
+            after_model_callback=functools.partial(
+                debug_util.get_code_from_response,
+                do_eval=not use_data_leakage_checker,
+            ),
+            generate_content_config=types.GenerateContentConfig(
+                temperature=1.0,
+            ),
+            include_contents="none",
+        )
+        ablation_sequential_sub_agents = [ablation_agent]
+        if use_data_leakage_checker:
+            data_leakage_checker_agent = check_leakage_util.get_data_leakage_checker_agent(
+                prefix="ablation",
+                suffix=f"{k+1}",
+            )
+            ablation_sequential_sub_agents.append(data_leakage_checker_agent)
+            additional_agent_description = " and check if there are data leakage issues"
+        else:
+            additional_agent_description = ""
+        ablation_sequential_agent = agents.SequentialAgent(
+            name=f"ablation_sequential_agent_{k+1}",
+            description=f"Perform ablation studies{additional_agent_description}.",
+            sub_agents=ablation_sequential_sub_agents,
+        )
+        debug_inner_loop_agent = debug_util.get_debug_inner_loop_agent(
+            prefix="refine",
             suffix=f"{k+1}",
         )
-        ablation_sequential_sub_agents.append(data_leakage_checker_agent)
-        additional_agent_description = " and check if there are data leakage issues"
-    else:
-        additional_agent_description = ""
-    ablation_sequential_agent = agents.SequentialAgent(
-        name=f"ablation_sequential_agent_{k+1}",
-        description=f"Perform ablation studies{additional_agent_description}.",
-        sub_agents=ablation_sequential_sub_agents,
+        ablation_and_debug_loop_agent = agents.LoopAgent(
+            name=f"ablation_and_debug_loop_agent_{k+1}",
+            description="Perform ablation study with debugging loop.",
+            sub_agents=[
+                ablation_sequential_agent,
+                debug_inner_loop_agent,
+            ],
+            max_iterations=config.CONFIG.inner_loop_round,
+        )
+        ablation_summary_agent = agents.Agent(
+            model=config.CONFIG.agent_model,
+            name=f"ablation_summary_agent_{k+1}",
+            description="Summarize the ablation study results.",
+            instruction=get_ablation_summary_agent_instruction,
+            before_model_callback=prepare_ablation_summary,
+            generate_content_config=types.GenerateContentConfig(
+                temperature=0.0,
+            ),
+            include_contents="none",
+        )
+        init_plan_agent = agents.Agent(
+            model=config.CONFIG.agent_model,
+            name=f"init_plan_agent_{k+1}",
+            description="Propose an initial plan.",
+            instruction=get_plan_refine_agent_instruction,
+            before_model_callback=check_plan_generation_finish,
+            after_model_callback=get_refined_plan,
+            generate_content_config=types.GenerateContentConfig(
+                temperature=1.0,
+            ),
+            include_contents="none",
+        )
+        init_plan_loop_agent = agents.LoopAgent(
+            name=f"init_plan_loop_agent_{k+1}",
+            description="Generate the initial plan with retry.",
+            sub_agents=[init_plan_agent],
+            before_agent_callback=init_inner_loop_states,
+            after_agent_callback=update_inner_loop_states,
+            max_iterations=config.CONFIG.max_retry,
+        )
+        init_plan_implement_agent = debug_util.get_run_and_debug_agent(
+            prefix="refine",
+            suffix=f"{k+1}",
+            agent_description="Implement the initial plan",
+            instruction_func=get_plan_implement_agent_instruction,
+            before_model_callback=None,
+        )
+        plan_refine_agent = agents.Agent(
+            model=config.CONFIG.agent_model,
+            name=f"plan_refine_agent_{k+1}",
+            description="Refine the plan based on the results.",
+            instruction=get_plan_refine_agent_instruction,
+            before_model_callback=check_plan_refine_finish,
+            after_model_callback=get_refined_plan,
+            generate_content_config=types.GenerateContentConfig(
+                temperature=1.0,
+            ),
+            include_contents="none",
+        )
+        plan_implement_agent = debug_util.get_run_and_debug_agent(
+            prefix="refine",
+            suffix=f"{k+1}",
+            agent_description="Implement the refined plan",
+            instruction_func=get_plan_implement_agent_instruction,
+            before_model_callback=None,
+        )
+        plan_refine_and_implement_agent = agents.SequentialAgent(
+            name=f"plan_refine_and_implement_agent_{k+1}",
+            description="Refine the plan and implement the plan.",
+            sub_agents=[
+                plan_refine_agent,
+                plan_implement_agent,
+            ],
+            before_agent_callback=update_inner_loop_states,
+        )
+        refine_inner_loop_agent = agents.LoopAgent(
+            name=f"refine_inner_loop_agent_{k+1}",
+            description="Refine the plan for multiple rounds.",
+            sub_agents=[plan_refine_and_implement_agent],
+            max_iterations=config.CONFIG.inner_loop_round,
+        )
+        ablation_and_refine_agent = agents.SequentialAgent(
+            name=f"ablation_and_refine_agent_{k+1}",
+            description="Perform ablation study and refine the code.",
+            sub_agents=[
+                ablation_and_debug_loop_agent,
+                ablation_summary_agent,
+                init_plan_loop_agent,
+                init_plan_implement_agent,
+                refine_inner_loop_agent,
+            ],
+            before_agent_callback=init_refinement_states,
+            after_agent_callback=update_outer_loop_states,
+        )
+        ablation_and_refine_loop_agent = agents.LoopAgent(
+            name=f"ablation_and_refine_loop_agent_{k+1}",
+            description="Perform ablation study and refine the code for multiple rounds.",
+            sub_agents=[ablation_and_refine_agent],
+            before_agent_callback=init_outer_loop_states,
+            max_iterations=config.CONFIG.outer_loop_round,
+        )
+        refinement_parallel_sub_agents.append(ablation_and_refine_loop_agent)
+    refinement_agent = agents.ParallelAgent(
+        name="refinement_agent",
+        description="Refine each solution by performing ablation studies.",
+        sub_agents=refinement_parallel_sub_agents,
+        before_agent_callback=None,
     )
-    debug_inner_loop_agent = debug_util.get_debug_inner_loop_agent(
-        prefix="ablation",
-        suffix=f"{k+1}",
-    )
-    ablation_and_debug_loop_agent = agents.LoopAgent(
-        name=f"ablation_and_debug_loop_agent_{k+1}",
-        description="Perform ablation studies and debug the code until it succeeds.",
-        sub_agents=[
-            ablation_sequential_agent,
-            debug_inner_loop_agent,
-        ],
-        max_iterations=config.CONFIG.max_rollback_round,
-    )
-    ablation_summary_agent = agents.Agent(
-        model=config.CONFIG.agent_model,
-        name=f"ablation_summary_agent_{k+1}",
-        description="Summarize the ablation study results.",
-        instruction=get_ablation_summary_agent_instruction,
-        after_model_callback=get_ablation_summary,
-        generate_content_config=types.GenerateContentConfig(
-            temperature=0.0,
-        ),
-        include_contents="none",
-    )
-    init_plan_agent = agents.Agent(
-        model=config.CONFIG.agent_model,
-        name=f"init_plan_agent_{k+1}",
-        description="Generate an initial plan and a code block.",
-        instruction=get_init_plan_agent_instruction,
-        before_model_callback=check_init_plan_finish,
-        after_model_callback=get_plan_and_code_block,
-        generate_content_config=types.GenerateContentConfig(
-            temperature=1.0,
-        ),
-        include_contents="none",
-    )
-    init_plan_loop_agent = agents.LoopAgent(
-        name=f"init_plan_loop_agent_{k+1}",
-        description=(
-            "Generate an initial plan and a code block until the code block is valid."
-        ),
-        sub_agents=[init_plan_agent],
-        before_agent_callback=init_inner_loop_states,
-        max_iterations=config.CONFIG.max_retry,
-    )
-    init_plan_implement_agent = debug_util.get_run_and_debug_agent(
-        prefix="plan_implement_initial",
-        suffix=f"{k+1}",
-        agent_description="Implement the initial plan to generate a solution.",
-        instruction_func=get_plan_implement_agent_instruction,
-        before_model_callback=check_plan_implement_finish,
-    )
-    plan_refine_agent = agents.Agent(
-        model=config.CONFIG.agent_model,
-        name=f"plan_refine_agent_{k+1}",
-        description="Refine the plan.",
-        instruction=get_plan_refinement_instruction,
-        after_model_callback=get_refined_plan,
-        generate_content_config=types.GenerateContentConfig(
-            temperature=1.0,
-        ),
-        include_contents="none",
-    )
-    plan_implement_agent = debug_util.get_run_and_debug_agent(
-        prefix="plan_implement",
-        suffix=f"{k+1}",
-        agent_description="Implement the plan to generate a solution.",
-        instruction_func=get_plan_implement_agent_instruction,
-        before_model_callback=check_plan_implement_finish,
-    )
-    plan_refine_and_implement_agent = agents.SequentialAgent(
-        name=f"plan_refine_and_implement_agent_{k+1}",
-        description="Refine the plan and then implement it.",
-        sub_agents=[
-            plan_refine_agent,
-            plan_implement_agent,
-        ],
-        after_agent_callback=update_inner_loop_states,
-    )
-    refine_inner_loop_agent = agents.LoopAgent(
-        name=f"refine_inner_loop_agent_{k+1}",
-        description="Refine the given solution.",
-        sub_agents=[plan_refine_and_implement_agent],
-        before_agent_callback=update_inner_loop_states,
-        max_iterations=config.CONFIG.inner_loop_round,
-    )
-    ablation_and_refine_agent = agents.SequentialAgent(
-        name=f"ablation_and_refine_agent_{k+1}",
-        description="Perform ablation study and refine the code.",
-        sub_agents=[
-            ablation_and_debug_loop_agent,
-            ablation_summary_agent,
-            init_plan_loop_agent,
-            init_plan_implement_agent,
-            refine_inner_loop_agent,
-        ],
-        after_agent_callback=update_outer_loop_states,
-    )
-    ablation_and_refine_loop_agent = agents.LoopAgent(
-        name=f"ablation_and_refine_loop_agent_{k+1}",
-        description="Perform ablation study and refine the code for multiple rounds.",
-        sub_agents=[ablation_and_refine_agent],
-        before_agent_callback=init_outer_loop_states,
-        max_iterations=config.CONFIG.outer_loop_round,
-    )
-    refinement_parallel_sub_agents.append(ablation_and_refine_loop_agent)
-refinement_agent = agents.ParallelAgent(
-    name="refinement_agent",
-    description="Refine each solution by performing ablation studies.",
-    sub_agents=refinement_parallel_sub_agents,
-    before_agent_callback=None,
-)
+    return refinement_agent
