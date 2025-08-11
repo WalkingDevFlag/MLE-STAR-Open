@@ -1,0 +1,55 @@
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.Python
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+
+# IDE/editor
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Build, dist, packaging
+build/
+dist/
+.eggs/
+*.egg
+*.whl
+
+# Test, run, and workspace outputs
+machine_learning_engineering/workspace/
+runs/
+**/final/
+**/*.log
+**/output/
+
+# Misc
+*.bak
+*.tmp
+*.swp
+*.swo
+*.orig
