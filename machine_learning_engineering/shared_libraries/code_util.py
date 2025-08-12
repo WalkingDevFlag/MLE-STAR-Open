@@ -22,6 +22,10 @@ def run_python_code(
     exec_timeout: int,
 ) -> dict[str, Any]:
     start_time = time.time()
+    
+    # Ensure the directory exists before trying to write the file
+    os.makedirs(run_cwd, exist_ok=True)
+    
     output_filepath = os.path.join(run_cwd, py_filepath)
     with open(output_filepath, "w", encoding="utf-8") as f:
         f.write(code_text)
