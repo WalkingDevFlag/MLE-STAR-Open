@@ -69,6 +69,7 @@ dist/
 machine_learning_engineering/workspace/
 machine_learning_engineering/tests/
 runs/
+openrouter_keys.txt
 **/final/
 **/*.log
 **/output/
