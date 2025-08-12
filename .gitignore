@@ -67,6 +67,7 @@ dist/
 
 # Test, run, and workspace outputs
 machine_learning_engineering/workspace/
+machine_learning_engineering/tests/
 runs/
 **/final/
 **/*.log

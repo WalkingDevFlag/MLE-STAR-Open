@@ -1,33 +1,121 @@
-# --- Stubs for missing referenced functions ---
+# --- Minimal implementations for referenced callbacks and setup ---
+from typing import Optional as _OptionalType
+from google.adk.agents import callback_context as _cb
+from google.genai import types as _types
+
 def get_task_summary(*args, **kwargs):
-    pass
+    # No-op: downstream logic doesn't strictly depend on this summary for pathing
+    return None
 
 def update_merger_states(*args, **kwargs):
-    pass
+    return None
 
-def create_workspace(*args, **kwargs):
-    pass
-
-def prepare_task(*args, **kwargs):
-    pass
-# --- Callback stubs for agent creation ---
 def check_model_finish(*args, **kwargs):
-    pass
-# --- Callback stubs for agent creation ---
+    return None
+
 def check_model_eval_finish(*args, **kwargs):
-    pass
+    return None
 
 def rank_candidate_solutions(*args, **kwargs):
-    pass
+    return None
 
 def check_merger_finish(*args, **kwargs):
-    pass
+    return None
 
 def select_best_solution(*args, **kwargs):
-    pass
+    return None
 
 def skip_data_use_check(*args, **kwargs):
-    pass
+    return None
+
+def prepare_task(callback_context: _cb.CallbackContext) -> _OptionalType[_types.Content]:
+    """Initialize state with absolute workspace/data paths and task metadata.
+
+    This ensures all downstream code writes under
+    machine_learning_engineering/workspace/<task_name>/...
+    regardless of the current working directory.
+    """
+    from machine_learning_engineering.shared_libraries import common_util as _common
+    from machine_learning_engineering.shared_libraries import config as _cfg
+    import os
+
+    # Load config into state
+    state = callback_context.state
+    state["data_dir"] = _cfg.CONFIG.data_dir
+    state["task_name"] = _cfg.CONFIG.task_name
+    state["workspace_dir"] = _cfg.CONFIG.workspace_dir
+    state["lower"] = _cfg.CONFIG.lower
+    state["exec_timeout"] = _cfg.CONFIG.exec_timeout
+    state["num_solutions"] = _cfg.CONFIG.num_solutions
+    state["num_model_candidates"] = _cfg.CONFIG.num_model_candidates
+    state["max_retry"] = _cfg.CONFIG.max_retry
+    state["max_debug_round"] = _cfg.CONFIG.max_debug_round
+    state["max_rollback_round"] = _cfg.CONFIG.max_rollback_round
+    state["inner_loop_round"] = _cfg.CONFIG.inner_loop_round
+    state["outer_loop_round"] = _cfg.CONFIG.outer_loop_round
+    state["ensemble_loop_round"] = _cfg.CONFIG.ensemble_loop_round
+    state["num_top_plans"] = _cfg.CONFIG.num_top_plans
+    state["use_data_leakage_checker"] = _cfg.CONFIG.use_data_leakage_checker
+    state["use_data_usage_checker"] = _cfg.CONFIG.use_data_usage_checker
+
+    # Seed everything for reproducibility
+    _common.set_random_seed(_cfg.CONFIG.seed)
+
+    # Ensure base workspace/task directory exists
+    os.makedirs(os.path.join(state["workspace_dir"], state["task_name"]), exist_ok=True)
+
+    # Try to load task description for better prompts (optional)
+    try:
+        td_path = os.path.join(state["data_dir"], state["task_name"], "task_description.txt")
+        if os.path.exists(td_path):
+            with open(td_path, "r", encoding="utf-8") as f:
+                state["task_description"] = f.read()
+    except Exception:
+        # Non-fatal if the file doesn't exist
+        pass
+    return None
+
+def create_workspace(callback_context: _cb.CallbackContext) -> _OptionalType[_types.Content]:
+    """Create per-run workspace and copy task inputs.
+
+    For init_solution_gen_agent_{k}, create:
+      <workspace_dir>/<task_name>/<k>/{input, model_candidates}
+      and copy files from <data_dir>/<task_name> into .../<k>/input
+    """
+    import os
+    import shutil
+
+    state = callback_context.state
+    data_dir = state.get("data_dir", "")
+    workspace_dir = state.get("workspace_dir", "")
+    task_name = state.get("task_name", "")
+
+    # Derive task_id from the agent name suffix
+    agent_name = callback_context.agent_name  # e.g., init_solution_gen_agent_1
+    try:
+        task_id = agent_name.split("_")[-1]
+    except Exception:
+        task_id = "1"
+
+    run_base = os.path.join(workspace_dir, task_name, task_id)
+    os.makedirs(os.path.join(run_base, "input"), exist_ok=True)
+    os.makedirs(os.path.join(run_base, "model_candidates"), exist_ok=True)
+
+    # Copy task files into input (skip anything containing 'answer')
+    src_dir = os.path.join(data_dir, task_name)
+    if os.path.isdir(src_dir):
+        for entry in os.listdir(src_dir):
+            src_path = os.path.join(src_dir, entry)
+            if os.path.isdir(src_path):
+                dst_path = os.path.join(run_base, "input", entry)
+                if os.path.exists(dst_path):
+                    shutil.rmtree(dst_path)
+                shutil.copytree(src_path, dst_path)
+            else:
+                if "answer" not in entry:
+                    from machine_learning_engineering.shared_libraries import common_util as _common
+                    _common.copy_file(src_path, os.path.join(run_base, "input"))
+    return None
 from google.adk import agents
 """Initialization agent for Machine Learning Engineering."""
 
