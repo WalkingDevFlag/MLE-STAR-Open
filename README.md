@@ -15,7 +15,6 @@ Not affiliated with the original authors or Google.
 - DuckDuckGo search (no API key)
 - Automated basic leakage / data usage checks
 - Minimal runner for low token usage
-- Kaggle submission formatting helper
 
 ---
 
@@ -98,12 +97,6 @@ Minimal (fewer LLM calls):
 python .\scripts\run_task.py --task-dir .\machine_learning_engineering\tasks\california-housing-prices
 ```
 
-Create Kaggle-style submission (expects prediction file in workspace run folder):
-
-```powershell
-python .\scripts\make_submission.py --output-dir .\machine_learning_engineering\workspace\california-housing-prices\1\output
-```
-
 Example outputs:
 
 ```text
@@ -148,7 +141,6 @@ Scenario and pipeline tests live under `eval/` and `tests/`.
 
 ## FAQ
 
-**Kaggle error: missing id column?** Ensure `id_column` in `task_description.txt` and that CSVs include it, or run `make_submission.py` to add one.  
 **Hit rate limits?** Wait for reset, reduce steps (`MAX_AGENT_STEPS`), use minimal runner, or upgrade plan.  
 **Force CPU?** Leave `CUDA_VISIBLE_DEVICES` empty when invoking Python.  
 **Change model?** Set `LLM_MODEL` in `.env` or env var before running.
