@@ -15,6 +15,7 @@ Not affiliated with the original authors or Google.
 - DuckDuckGo search (no API key)
 - Automated basic leakage / data usage checks
 - Minimal runner for low token usage
+- Kaggle submission formatting helper
 
 ---
 
@@ -33,14 +34,21 @@ Not affiliated with the original authors or Google.
         - Git
         - (Optional) Poetry
 
-1. Clone & env
+1. Clone & env (Conda)
 
 ```powershell
+# Clone
 git clone https://github.com/<yourname>/mle-star-open.git
 cd mle-star-open
-python -m venv .venv
-. .\.venv\Scripts\Activate.ps1
+
+# Create conda env (Python 3.12+)
+conda create -n mle-star-open python=3.12 -y
+conda activate mle-star-open
+
+# (Optional) Faster resolver upgrade
 python -m pip install --upgrade pip
+
+# Install deps
 pip install -r requirements.txt
 ```
 
@@ -48,7 +56,7 @@ pip install -r requirements.txt
 
 ```env
 OPENROUTER_API_KEY=sk-...
-LLM_MODEL=meta-llama/llama-3.1-8b-instruct:free
+ROOT_AGENT_MODEL=openai/gpt-oss-20b:free
 # Optional overrides:
 # MAX_AGENT_STEPS=4
 # TEMPERATURE=0.2
@@ -97,6 +105,12 @@ Minimal (fewer LLM calls):
 python .\scripts\run_task.py --task-dir .\machine_learning_engineering\tasks\california-housing-prices
 ```
 
+Create Kaggle-style submission (expects prediction file in workspace run folder):
+
+```powershell
+python .\scripts\make_submission.py --output-dir .\machine_learning_engineering\workspace\california-housing-prices\1\output
+```
+
 Example outputs:
 
 ```text
@@ -116,7 +130,7 @@ Edit `config.py` or set environment variables (env vars override defaults). Exam
 
 ```powershell
 $env:MAX_AGENT_STEPS=3
-$env:LLM_MODEL="meta-llama/llama-3.1-8b-instruct:free"
+$env:ROOT_AGENT_MODEL="openai/gpt-oss-20b:free"
 ```
 
 ---
@@ -141,9 +155,10 @@ Scenario and pipeline tests live under `eval/` and `tests/`.
 
 ## FAQ
 
+**Kaggle error: missing id column?** Ensure `id_column` in `task_description.txt` and that CSVs include it, or run `make_submission.py` to add one.  
 **Hit rate limits?** Wait for reset, reduce steps (`MAX_AGENT_STEPS`), use minimal runner, or upgrade plan.  
 **Force CPU?** Leave `CUDA_VISIBLE_DEVICES` empty when invoking Python.  
-**Change model?** Set `LLM_MODEL` in `.env` or env var before running.
+**Change model?** Set `ROOT_AGENT_MODEL` in `.env` or as an environment variable before running.
 
 ---
 
