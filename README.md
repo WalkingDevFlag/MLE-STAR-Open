@@ -38,7 +38,7 @@ Not affiliated with the original authors or Google.
 
 ```powershell
 # Clone
-git clone https://github.com/<yourname>/mle-star-open.git
+git clone https://github.com/WalkingDevFlag/MLE-STAR-Open
 cd mle-star-open
 
 # Create conda env (Python 3.12+)
