@@ -11,7 +11,7 @@ Not affiliated with the original authors or Google.
 
 - Multi-agent stages: initialization → refinement → ensembling → submission
 - OpenRouter LLM backend (free-tier; rate limits apply)
-- Planned local LLM (Ollama) integration
+- Deferred local LLM (Ollama) adapter (see Archive.md for rationale)
 - DuckDuckGo search (no API key)
 - Automated basic leakage / data usage checks
 - Minimal runner for low token usage
@@ -22,6 +22,8 @@ Not affiliated with the original authors or Google.
 ## Architecture
 
 ![Machine-Learning-Engineering](machine-learning-engineering-architecture.svg)
+
+For extended design rationale, roadmap, and historical notes see `Archive.md`.
 
 ---
 
@@ -140,15 +142,18 @@ $env:ROOT_AGENT_MODEL="openai/gpt-oss-20b:free"
 ```powershell
 pytest
 ```
+
 Scenario and pipeline tests live under `eval/` and `tests/`.
 
 ---
 
-## Limitations
+## Limitations (Current Snapshot)
+
+Concise live list—historical or deprecated items move to `Archive.md`.
 
 - Not sized for official MLE-Bench specs (36 vCPUs / 440GB RAM / A10 24GB); local experimentation focus.
 - OpenRouter free-tier ~50 requests/day (subject to change).
-- Early-stage (planned) Ollama integration.
+- Ollama adapter deferred pending provider + eval stabilization (see Archive.md decision note).
 - Test suite may lag new features.
 
 ---
